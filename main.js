@@ -1,11 +1,7 @@
-/**
- * Paybix — Custom Webflow Scripts
- * https://paybix.eu
- */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Jouw Paybix-specifieke code hier
+  // Jouw Wambay-specifieke code hier
   if (window.Wambay) {
-    Wambay.log('Paybix scripts loaded');
+    Wambay.log('Wambay scripts loaded');
   }
 });
