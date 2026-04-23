@@ -27,6 +27,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const distanceInput = document.getElementById("distance");
     const omgevingNaam = document.getElementById("place");
     const clearFilterBtn = document.getElementById("clearFilterBtn");
+    const joblistWrapper = document.querySelector('[data-target="joblist"]');
+    const mapToggleBtns = document.querySelectorAll(
+      '[data-action="toggle-map"]',
+    );
     const params = new URLSearchParams(window.location.search);
 
     // ── Guard core elements ──
@@ -110,6 +114,56 @@ document.addEventListener("DOMContentLoaded", () => {
       resetFilters();
       if (publicJoblist) publicJoblist.triggerHook("filter");
     });
+
+    // A separate Webflow script owns showing/hiding the map itself; we
+    // piggyback on the same toggle buttons to mirror "is the map open?"
+    // onto the joblist wrapper so Webflow CSS can shrink the cards.
+    if (joblistWrapper && mapToggleBtns.length) {
+      mapToggleBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const opening =
+            !joblistWrapper.classList.contains("map-is-open");
+          joblistWrapper.classList.toggle("map-is-open", opening);
+          if (opening) {
+            filterListByMapViewport();
+          } else {
+            filteredJobList.forEach((item) => {
+              item.element.style.display = "";
+            });
+          }
+        });
+      });
+    }
+
+    // While the map is open, the joblist overlays the map. Mousewheel
+    // over the list should scroll the list itself instead of the page
+    // behind it. Capture phase so we win against other wheel listeners.
+    if (joblistWrapper) {
+      window.addEventListener(
+        "wheel",
+        (e) => {
+          if (!joblistWrapper.classList.contains("map-is-open")) return;
+          const r = joblistWrapper.getBoundingClientRect();
+          if (
+            e.clientX < r.left ||
+            e.clientX > r.right ||
+            e.clientY < r.top ||
+            e.clientY > r.bottom
+          )
+            return;
+          const canDown =
+            joblistWrapper.scrollTop + joblistWrapper.clientHeight <
+            joblistWrapper.scrollHeight;
+          const canUp = joblistWrapper.scrollTop > 0;
+          if ((e.deltaY > 0 && canDown) || (e.deltaY < 0 && canUp)) {
+            joblistWrapper.scrollTop += e.deltaY;
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        },
+        { capture: true, passive: false },
+      );
+    }
 
     const onDistanceChange = debounce(() => {
       if (distanceInput.value < 0) distanceInput.value = 0;
@@ -428,7 +482,25 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       window.lazyLoadedMap = map;
+
+      // Filter the list below the map to only jobs whose pins are in the
+      // current viewport. Debounced so a pan doesn't thrash the DOM.
+      map.on("moveend", debounce(filterListByMapViewport, 50));
+
       addMapMarkers(filteredJobList);
+    }
+
+    function filterListByMapViewport() {
+      if (!map || !filteredJobList.length) return;
+      if (joblistWrapper && !joblistWrapper.classList.contains("map-is-open"))
+        return;
+      const bounds = map.getBounds();
+      filteredJobList.forEach((item) => {
+        const coords = getLatLng(item.element);
+        const inView =
+          coords && bounds.contains([coords.lng, coords.lat]);
+        item.element.style.display = inView ? "" : "none";
+      });
     }
 
     function clearMapMarkers() {
@@ -451,8 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
         grouped[key].jobs.push(item);
       });
 
-      const bounds = new mapboxgl.LngLatBounds();
-      let hasMarkers = false;
+      const coords = [];
 
       Object.values(grouped).forEach(({ lat, lng, jobs }) => {
         const markerEl = document.createElement("div");
@@ -472,13 +543,37 @@ document.addEventListener("DOMContentLoaded", () => {
           .addTo(map);
 
         markers.push(marker);
-        bounds.extend([lng, lat]);
-        hasMarkers = true;
+        coords.push({ lat, lng });
       });
 
-      if (hasMarkers) {
-        map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
-      }
+      if (coords.length === 0) return;
+
+      // Fit bounds to the inner 90% of pins so a few stragglers don't
+      // force an over-zoomed-out initial view. Pins stay rendered; user
+      // can pan/zoom out to reach them.
+      const bulk = coords.length > 3 ? innerPercentile(coords, 0.9) : coords;
+      const bounds = new mapboxgl.LngLatBounds();
+      bulk.forEach(({ lat, lng }) => bounds.extend([lng, lat]));
+      map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
+    }
+
+    function innerPercentile(points, pct) {
+      const medLat = median(points.map((p) => p.lat));
+      const medLng = median(points.map((p) => p.lng));
+      const sorted = points
+        .map((p) => ({
+          p,
+          d: distanceInKmBetweenEarthCoordinates(p.lat, p.lng, medLat, medLng),
+        }))
+        .sort((a, b) => a.d - b.d);
+      const keep = Math.max(1, Math.ceil(sorted.length * pct));
+      return sorted.slice(0, keep).map((x) => x.p);
+    }
+
+    function median(nums) {
+      const s = [...nums].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
     }
 
     // ── Utility Functions ──
