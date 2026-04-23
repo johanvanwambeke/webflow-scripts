@@ -9,12 +9,22 @@ Gehost via **jsDelivr CDN** — geen Slater nodig.
 scripts/
 ├── _shared/          # Herbruikbare utilities (alle clients)
 │   └── utils.js
-├── paybix/
+├── harmony-group/
 │   └── main.js
-├── porto-maurizio/
-│   └── main.js
-└── fincreadible/
-    └── main.js
+├── lions-ronse/
+│   ├── main.js
+│   └── sunburst.js
+├── spit/
+│   └── translate-dates.js
+├── wambay/
+│   ├── calculator.js
+│   ├── localise.js
+│   ├── swiper.css
+│   └── swiper.js
+└── workbay/
+    ├── job-alerts.js
+    ├── jobs-page.js
+    └── send-form.js
 ```
 
 ## Gebruik in Webflow
@@ -23,10 +33,10 @@ Plak dit in je Webflow custom code (before `</body>`):
 
 ```html
 <!-- Client-specifiek script -->
-<script src="https://cdn.jsdelivr.net/gh/wambay/webflow-scripts@latest/scripts/CLIENT-NAAM/main.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/johanvanwambeke/webflow-scripts@latest/scripts/CLIENT-NAAM/main.js"></script>
 
 <!-- Shared utilities (optioneel) -->
-<script src="https://cdn.jsdelivr.net/gh/wambay/webflow-scripts@latest/scripts/_shared/utils.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/johanvanwambeke/webflow-scripts@latest/scripts/_shared/utils.js"></script>
 ```
 
 > Vervang `CLIENT-NAAM` met de mapnaam van de client.
@@ -45,18 +55,18 @@ git push origin v1.0.0
 
 Dan gebruik je in Webflow:
 ```
-https://cdn.jsdelivr.net/gh/wambay/webflow-scripts@v1.0.0/scripts/paybix/main.js
+https://cdn.jsdelivr.net/gh/johanvanwambeke/webflow-scripts@v1.0.0/scripts/paybix/main.js
 ```
 
 ## Cache
 
 jsDelivr cachet bestanden. Na een push kan het ~12 uur duren.  
-Purge handmatig via: `https://purge.jsdelivr.net/gh/wambay/webflow-scripts@latest/scripts/CLIENT-NAAM/main.js`
+Purge handmatig via: `https://purge.jsdelivr.net/gh/johanvanwambeke/webflow-scripts@latest/scripts/CLIENT-NAAM/main.js`
 
 ## Setup
 
 ```bash
-git clone git@github.com:wambay/webflow-scripts.git
+git clone https://github.com/johanvanwambeke/webflow-scripts.git
 cd webflow-scripts
 # maak/edit scripts
 git add .
