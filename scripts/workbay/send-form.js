@@ -159,11 +159,21 @@ document.addEventListener("DOMContentLoaded", () => {
       return errors;
     }
 
-    function getSource() {
+    function getUtmParams() {
       try {
-        return localStorage.getItem("bron") || "Website";
+        const raw = localStorage.getItem("utm_data");
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (
+          !parsed ||
+          typeof parsed.expires_at !== "number" ||
+          parsed.expires_at <= Date.now()
+        ) {
+          return {};
+        }
+        return parsed.params || {};
       } catch (_) {
-        return "Website";
+        return {};
       }
     }
 
@@ -178,7 +188,13 @@ document.addEventListener("DOMContentLoaded", () => {
       payload.append("resumeFile", rawData.get("resume"));
       payload.append("functie", rawData.get("functionTitle") || "");
       payload.append("representativeEmail", representativeEmail);
-      payload.append("source", getSource());
+      payload.append("source", "deprecated");
+
+      const utm = getUtmParams();
+      payload.append("Utm_Source", utm.utm_source || "");
+      payload.append("Utm_Medium", utm.utm_medium || "");
+      payload.append("Utm_Campaign", utm.utm_campaign || "");
+      payload.append("Utm_Term", utm.utm_term || "");
 
       if (DEBUG) {
         console.groupCollapsed("Bullhorn payload");
